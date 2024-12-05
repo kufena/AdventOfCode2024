@@ -8,6 +8,15 @@ var board = File.ReadAllLines(args[0]);
 int ny = board.Length;
 int nx = board[0].Length;
 
+//
+// For Part1 there are eight directional masks tested at each position. Each one should
+// yield a string that is XMAS or not.
+//
+// For Part2 there is only one X shaped mask (I thought a cross shaped mask was required but
+// obvioulsy not.) The mast gives two strings that are MAS or SAM - an easier one than
+// the Part1 solution.
+//
+
 //Part1(board, ny, nx);
 Part2(board, ny, nx);
 
