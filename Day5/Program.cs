@@ -99,7 +99,11 @@ static void Part2(Dictionary<int, List<int>> rules, List<List<int>> tests, out i
         }
         else
         {
-            // fix!
+            // This is a repeated swap and test strategy. I've convinced myself that, unless
+            // rules contradict each other, then this should always complete.
+            // It isn't a great way to solve the problem - you can sort using the rules as a
+            // ordering, but this solved the problem.
+
             var testest = new List<int>();
             foreach (var k in test) testest.Add(k);
             while (true)
