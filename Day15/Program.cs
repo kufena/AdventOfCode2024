@@ -1,4 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using System.Diagnostics.CodeAnalysis;
+
 Console.WriteLine("Hello, World!");
 
 static void ExpandGrid(string[] lines, int rows, int cols, ref int robotx, ref int roboty, HashSet<(int, int)> wallBlocks, HashSet<(int, int)> boxBlocks)
@@ -225,10 +227,10 @@ void Part2(string[] lines, List<string> directions, int rows, int cols)
     {
         for (int q = 0; q < dirLine.Length; q++)
         {
-            Console.ReadKey();
-            Console.Clear();
-            displayPosiGrid(wallBlocks, boxBlocks, robotx, roboty, cols, rows);
-            Console.WriteLine($"Next move {dirLine[q]}");
+            //Console.ReadKey();
+            //Console.Clear();
+            //displayPosiGrid(wallBlocks, boxBlocks, robotx, roboty, cols, rows);
+            //Console.WriteLine($"Next move {dirLine[q]}");
             (int dx, int dy) = dirToChange(dirLine[q]);
 
             if (dirLine[q] == '<' || dirLine[q] == '>')
@@ -237,19 +239,87 @@ void Part2(string[] lines, List<string> directions, int rows, int cols)
             }
             else
             {
-                roboty = VerticalFlow(robotx, roboty, wallBlocks, boxBlocks, dy);
+                (roboty, robotx) = VerticalFlow(robotx, roboty, wallBlocks, boxBlocks, dy);
             }
-            displayPosiGrid(wallBlocks, boxBlocks, robotx, roboty, cols, rows);
+            //displayPosiGrid(wallBlocks, boxBlocks, robotx, roboty, cols, rows);
 
         }
     }
 
-    var total = lanternFishCalculation(grid, rows, cols, '[');
+    var total = lanternFishCalculationMyDear(boxBlocks, rows, cols);
     Console.WriteLine($"Total is {total}");
 
-    int VerticalFlow(int robotx, int roboty, HashSet<(int, int)> wallBlocks, HashSet<(int, int)> boxBlocks, int dx)
+    (int,int) VerticalFlow(int robotx, int roboty, HashSet<(int, int)> wallBlocks, HashSet<(int, int)> boxBlocks, int dy)
     {
-        return -1;
+        // start with the @
+        if (wallBlocks.Contains((roboty + dy, robotx)))
+            return (roboty, robotx); // nothing to do.
+
+        HashSet<(int, int)> boxes = new();
+        if (boxBlocks.Contains((roboty + dy, robotx)))
+        {
+            boxes.Add((roboty + dy, robotx));
+        }
+        else if (boxBlocks.Contains((roboty + dy, robotx - 1)))
+        {
+            boxes.Add((roboty + dy, robotx - 1));
+        }
+
+        if (boxes.Count > 0)
+        {
+            HashSet<(int, int)> seen = new();
+            Stack<(int, int)> stack = new();
+            foreach (var box in boxes) stack.Push(box);
+            while (stack.Count > 0)
+            {
+                (int by, int bx) = stack.Pop();
+                if (seen.Contains((by, bx))) continue;
+
+                if (boxBlocks.Contains((by + dy, bx))) // directly above box to move too.
+                {
+                    boxes.Add((by + dy, bx));
+                    stack.Push((by + dy, bx));
+                }
+                if (boxBlocks.Contains((by + dy, bx - 1))) // slightly left box
+                {
+                    boxes.Add((by + dy, bx - 1));
+                    stack.Push((by + dy, bx - 1));
+                }
+                if (boxBlocks.Contains((by + dy, bx + 1))) // slight right box
+                {
+                    boxes.Add((by + dy, bx + 1));
+                    stack.Push((by + dy, bx + 1));
+                }
+                seen.Add((by, bx));
+            }
+
+            // can they all move?
+            bool movable = true;
+            foreach ((int boxy, int boxx) in boxes)
+            {
+                if (wallBlocks.Contains((boxy + dy, boxx)) || wallBlocks.Contains((boxy + dy, boxx + 1)))
+                {
+                    movable = false;
+                    break;
+                }
+            }
+            if (!movable)
+                return (roboty, robotx);
+
+            foreach ((int boxy, int boxx) in boxes)
+            {
+                boxBlocks.Remove((boxy, boxx));
+            }
+            foreach ((int boxy, int boxx) in boxes)
+            {
+                boxBlocks.Add((boxy + dy, boxx));
+            }
+            return (roboty + dy, robotx);
+        }
+        else // there's a dot so move!
+        {
+            return (roboty + dy, robotx);
+        }
     }
 
     int HorizontalFlow(int robotx, int roboty, HashSet<(int, int)> wallBlocks, HashSet<(int, int)> boxBlocks, int dx)
@@ -281,6 +351,16 @@ void Part2(string[] lines, List<string> directions, int rows, int cols)
 
         return robotx;
     }
+}
+
+long lanternFishCalculationMyDear(HashSet<(int, int)> boxBlocks, int rows, int cols)
+{
+    long total = 0;
+    foreach ((int y, int x) in boxBlocks)
+    {
+        total += (y * 100) + x;
+    }
+    return total;
 }
 
 (int,int) nextPosForBoxHorizontal(int x, int y, int dx)
