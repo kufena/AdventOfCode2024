@@ -249,6 +249,12 @@ void Part2(string[] lines, List<string> directions, int rows, int cols)
     var total = lanternFishCalculationMyDear(boxBlocks, rows, cols);
     Console.WriteLine($"Total is {total}");
 
+    //
+    // This vertical flow idea was pinched from someone on you tube.
+    // I was originally going to avoid the grid - track walls and boxes separately, but
+    // I did the grid instead. I didn't pinch any code, just the search idea then the
+    // check and then the move. It's fairly easy to understand I think.
+    //
     (int,int) VerticalFlow(int robotx, int roboty, HashSet<(int, int)> wallBlocks, HashSet<(int, int)> boxBlocks, int dy)
     {
         // start with the @
