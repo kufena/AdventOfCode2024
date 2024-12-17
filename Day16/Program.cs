@@ -124,7 +124,7 @@ void AllPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> g
 
 void AllPathsDFS(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
 {
-    Dictionary<Node, List<List<Node>> memo = new();
+    //Dictionary<Node, List<List<Node>> memo = new();
 
     long total = long.MaxValue;
     Stack<Node> nodesLeft = new();
