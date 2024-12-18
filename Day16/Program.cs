@@ -110,7 +110,7 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
         {
             if (v == u) continue;
             int alt = udistance + 1;
-            if (alt < distance[v])
+            if (alt >= 0 && alt < distance[v]) // if we have a negative new dist then don't put that in.
             {
                 if (alt < 0)
                     Console.WriteLine("ohdear");
