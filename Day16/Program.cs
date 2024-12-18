@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using Utilities;
 
 Console.WriteLine("Hello, World!");
 
@@ -62,9 +63,13 @@ foreach (var node in nodes)
     foreach (var p in hs) node.Key.edges.Add(graphNodes[p]);
 }
 
+var tests = new UPQTests();
+tests.Tests();
 
 //AllPaths(nodes, graphNodes, edges, startrow, startcol, endrow, endcol);
-AllPathsDFS(nodes, graphNodes, edges, startrow, startcol, endrow, endcol);
+//AllPathsDFS(nodes, graphNodes, edges, startrow, startcol, endrow, endcol);
+
+ShortestPath(nodes, graphNodes, startrow, startcol, endrow, endcol);
 
 //Thread th = new Thread(() =>
 //{
@@ -79,11 +84,57 @@ AllPathsDFS(nodes, graphNodes, edges, startrow, startcol, endrow, endcol);
 //th.Start();
 //th.Join();
 
-void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
+void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, int startrow, int startcol, int endrow, int endcol)
 {
-    PriorityQueue<Node, int> priorityQueue = new PriorityQueue<Node, int>();
+    UpdatablePriorityQueue upq = new();
     Dictionary<Node, int> distance = new();
-    Dictionary<Node, 
+    Dictionary<Node, Node?> prev = new();
+
+    Node target = graphNodes[(endrow, endcol)];
+
+    foreach (var nod in nodes.Keys)
+    {
+        distance[nod] = int.MaxValue;
+        prev[nod] = null;
+        upq.Enqueue((nod.row,nod.col), int.MaxValue);
+    }
+    var startNode = graphNodes[(startrow, startcol)];
+    distance[startNode] = 0;
+    upq.UpdatePriority((startNode.row, startNode.col), 0);
+
+    while (upq.Count() > 0)
+    {
+        ((int,int) coord, int udistance) = upq.Dequeue();
+        Node u = graphNodes[coord];
+        foreach (var v in u.edges)
+        {
+            if (v == u) continue;
+            int alt = udistance + 1;
+            if (alt < distance[v])
+            {
+                if (alt < 0)
+                    Console.WriteLine("ohdear");
+                distance[v] = alt;
+                prev[v] = u;
+                upq.UpdatePriority((v.row, v.col), alt);
+            }
+        }
+    }
+
+    Console.WriteLine($"Shortest appears to be {distance[target]}");
+    Node prv = prev[target];
+    List<(int, int)> steps = new List<(int, int)>() { (endrow, endcol) };
+    while (prv != startNode)
+    {
+        steps.Add((prv.row, prv.col));
+        prv = prev[prv];
+    }
+    steps.Reverse();
+    string strpath = pathToString(steps);
+    Console.WriteLine(strpath);
+    long finaldist = prefixToCount(strpath);
+    Console.WriteLine(finaldist);
+    Console.WriteLine($"What now?");
 }
 
 void AllPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)

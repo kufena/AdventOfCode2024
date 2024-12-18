@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Day16
 {
-    public class Node
+    public class Node : IEquatable<Node>
     {
         public int col { get; set; }
         public int row { get; set; }
@@ -34,6 +34,12 @@ namespace Day16
             Node n = edges[counter];
             counter++;
             return n;
+        }
+
+        public bool Equals(Node? other)
+        {
+            if (other == null) return false;
+            return (other.col == col && other.row == row);
         }
     }
 }

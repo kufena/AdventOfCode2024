@@ -2,7 +2,7 @@
   "profiles": {
     "Day16": {
       "commandName": "Project",
-      "commandLineArgs": "../../../Test3.txt"
+      "commandLineArgs": "../../../Test1.txt"
     }
   }
 }
