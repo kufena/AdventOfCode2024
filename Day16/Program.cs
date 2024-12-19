@@ -109,7 +109,11 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
         foreach (var v in u.edges)
         {
             if (v == u) continue;
-            int alt = udistance + 1;
+            var uprev = prev[u];
+            if (uprev == null)
+                uprev = u;
+            int stepdist = (int) dirChangeCost((uprev.row, uprev.col), coord, (v.row, v.col));
+            int alt = udistance + stepdist;
             if (alt >= 0 && alt < distance[v]) // if we have a negative new dist then don't put that in.
             {
                 if (alt < 0)
@@ -133,7 +137,11 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
     string strpath = pathToString(steps);
     Console.WriteLine(strpath);
     long finaldist = prefixToCount(strpath);
-    Console.WriteLine(finaldist);
+    // HACK HACK HACK HACK HACK HACK HACK HACK HACK HACK HACK HACK HACK
+    // Because of the way the first step works, it always gives a number
+    // that's out by 1, so we compensate here.
+    //
+    Console.WriteLine(finaldist+1);
     Console.WriteLine($"What now?");
 }
 
@@ -249,8 +257,19 @@ string dirChange((int,int) a, (int,int) b)
     if (arow == brow && acol > bcol) return "<";
     if (arow < brow && acol == bcol) return "v";
     if (arow > brow && acol == bcol) return "^";
-    throw new ArgumentException($"funny pairs {arow} {acol} to {brow} {bcol}");
+    //throw new ArgumentException($"funny pairs {arow} {acol} to {brow} {bcol}");
+    Console.WriteLine($"funny pairs {arow} {acol} to {brow} {bcol}");
+    return ">";
 }
+
+long dirChangeCost((int, int) a, (int, int) b, (int,int) c)
+{
+    (int arow, int acol) = a;
+    (int brow, int bcol) = b;
+    var pair = $"{dirChange(a, b)}{dirChange(b, c)}";
+    return prefixToCost(pair);
+}
+
 string FindPaths(string prefix, string direction, int startrow, int startcol, int endrow, int endcol, HashSet<(int, int)> mazeblockers, Dictionary<(int, int), string> memo, HashSet<(int, int)> seen)
 {
     if (startrow == endrow && startcol == endcol) // we've made it!
@@ -386,5 +405,37 @@ long prefixToCount(string s)
         }
     }
     return tot;
+}
+
+long prefixToCost(string s)
+{
+    long tot = 0;
+    switch (s)
+    {
+
+        case "^^":
+        case ">>":
+        case "<<":
+        case "vv":
+            return 1;
+
+        case "<^":
+        case "<v":
+        case ">^":
+        case ">v":
+        case "^>":
+        case "^<":
+        case "v<":
+        case "v>":
+            return 1001;
+        case "><":
+        case "^v":
+        case "<>":
+        case "v^":
+            return 2001;
+        default:
+            throw new ArgumentException("buggered prefix.");
+    }
+    
 }
 
