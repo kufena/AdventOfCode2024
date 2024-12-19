@@ -7,27 +7,38 @@ var spl1 = lines[0].Split(',', StringSplitOptions.RemoveEmptyEntries);
 string[] towels = new string[spl1.Length];
 for (int i = 0; i < spl1.Length; i++) towels[i] = spl1[i].Trim();
 
-Part1(lines, towels);
+//Part1(lines, towels);
+Part2(lines, towels);
 
-bool MatchEnumerate(string[] towels, string pattern)
+void Part2(string[] lines, string[] towels)
+{
+    long good = 0;
+    for (int k = 2; k < lines.Length; k++)
+    {
+        long matches = MatchEnumerate(towels, lines[k]);
+        Console.WriteLine($"GOOD {matches} {lines[k]}");
+        good += matches;
+
+    }
+    Console.WriteLine($"Good = {good}");
+}
+
+long MatchEnumerate(string[] towels, string pattern)
 {
     int patLen = pattern.Length;
     // If we've eaten an amount of the string, it doesn't matter how much is left - do the rest.
     // So if we match in several ways, it doesn't matter.
-    HashSet<int> sofar = new();
-    sofar.Add(0);
-
+    Dictionary<int,long> sofar = new();
+    sofar.Add(0,1);
+    long result = 0;
     while (sofar.Count > 0)
     {
-        HashSet<int> newsofar = new();
+        Dictionary<int,long> newsofar = new();
 
-        foreach (int eaten in sofar)
+        foreach ((int eaten, long count) in sofar)
         {
             foreach (var towel in towels)
             {
-                if (newsofar.Contains(eaten + towel.Length))
-                    continue;
-
                 bool match = true;
                 for (int i = 0; i < towel.Length; i++)
                 {
@@ -48,16 +59,22 @@ bool MatchEnumerate(string[] towels, string pattern)
                     if (left == pattern.Length)
                     {
                         // we're only about matching, no enumeration etc, so just return now.
-                        return true;
+                        result += count;
                     }
-
-                    newsofar.Add(eaten + towel.Length);
+                    else
+                    {
+                        int neweaten = eaten + towel.Length;
+                        if (newsofar.ContainsKey(neweaten))
+                            newsofar[neweaten] += count;
+                        else
+                            newsofar.Add(neweaten, count);
+                    }
                 }
             }
         }
         sofar = newsofar;
     }
-    return false;
+    return result;
 }
 
 bool Match(string[] towels, string pattern)
