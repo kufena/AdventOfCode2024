@@ -84,6 +84,13 @@ ShortestPath(nodes, graphNodes, startrow, startcol, endrow, endcol);
 //th.Start();
 //th.Join();
 
+
+//
+// There's a notion here of the nodes being a row, column and direction. And hence,
+// the edges and their weights represent the change or lack of direction change.
+// I'm not sure I've captured that here very well.
+//
+// It worked, anyway.
 void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, int startrow, int startcol, int endrow, int endcol)
 {
     UpdatablePriorityQueue upq = new();
@@ -129,7 +136,7 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
     Node prv = prev[target];
     List<(int, int)> steps = new List<(int, int)>() { (endrow, endcol) };
     while (prv != startNode)
-    {
+    { 
         steps.Add((prv.row, prv.col));
         prv = prev[prv];
     }
@@ -141,6 +148,8 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
     // Because of the way the first step works, it always gives a number
     // that's out by 1, so we compensate here.
     //
+    // OK, this is wrong but the above distance[target] is always correct,
+    // so that's ok.
     Console.WriteLine(finaldist+1);
     Console.WriteLine($"What now?");
 }
