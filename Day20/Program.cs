@@ -1,4 +1,5 @@
 ﻿using System.Security.Cryptography;
+using System.Xml;
 using Utilities;
 
 // See https://aka.ms/new-console-template for more information
@@ -12,6 +13,8 @@ int startrow = 0;
 int startcol = 0;
 int endrow = 0;
 int endcol = 0;
+int maxcheat = 20;
+int minsaving = 50;
 
 HashSet<(int, int)> nodes = new();
 for (int i = 0; i < rows; i++) {
@@ -35,6 +38,8 @@ for (int i = 0; i < rows; i++) {
     }
 }
 
+List<(int, int)> adjacencies = new List<(int, int)>() { (0, 1), (0, -1), (1, 0), (-1, 0) };
+
 Dictionary<(int, int), HashSet<(int, int)>> edges = new();
 BuildEdges(nodes, edges);
 
@@ -44,23 +49,92 @@ Console.WriteLine($"Shortest path is {initialSP} from {nodes.Count} nodes");
 Dictionary<int, int> savingCounts = new();
 HashSet<(int, int, int, int)> uniqueCheats = new();
 
-for (int i = 0; i < rows; i++)
+for (int i = 1; i < rows-1; i++)
 {
-    for (int j = 0; j < cols; j++)
+    for (int j = 1; j < cols-1; j++)
     {
         //if (i == startrow && j == startcol) continue;
         //if (i == endrow && j == endcol) continue;
 
-        // BEWARE DUPLICATE CHEATS.
-        var r1path = CheckCheat2(i, j, i + 1, j, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        var r2path = CheckCheat2(i, j, i - 1, j, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        var c1path = CheckCheat2(i, j, i, j + 1, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        var c2path = CheckCheat2(i, j, i, j - 1, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        CheckNewPath(initialSP, savingCounts, r1path, i, j, i+1, j, uniqueCheats);
-        CheckNewPath(initialSP, savingCounts, r2path, i, j, i-1, j, uniqueCheats);
-        CheckNewPath(initialSP, savingCounts, c1path, i, j, i, j+1, uniqueCheats);
-        CheckNewPath(initialSP, savingCounts, c2path, i, j, i, j-1, uniqueCheats);
+        // should give us cheats of lenght 2 to maxcheat.
+        for (int count = 1; count < maxcheat; count++)
+        {
+            Console.WriteLine($"{(i, j)} count {count} so far {uniqueCheats.Count}");
+            HashSet<List<(int, int)>> AllCheats = GenerateCheats(rows, cols, i, j, count);
+            foreach (var cheat in AllCheats)
+            {
+                (int cheatsrow, int cheatscol) = cheat.First();
+                (int cheaterow, int cheatecol) = cheat.Last();
+                if (!uniqueCheats.Contains((cheatsrow, cheatscol, cheaterow, cheatecol))) 
+                {
+                    var cheatpath = CheckCheat3(cheat, rows, cols, nodes, startrow, endrow, startcol, endcol);
+                    (int len, List<(int, int)> path) = cheatpath;
+                    if (len < initialSP)
+                    {
+                        // check all steps used and in order.
+                        if (path.Contains(cheat.First()))
+                        {
+                            int ind = path.IndexOf(cheat.First());
+                            int k = 1;
+                            bool ok = true;
+                            while (k < cheat.Count)
+                            {
+                                int pop = path.IndexOf(cheat[k]);
+                                if (pop != ind + 1)
+                                {
+                                    ok = false;
+                                    break;
+                                }
+                                ind = pop;
+                            }
+
+                            if (ok)
+                            {
+                                int saving = initialSP - len;
+                                if (savingCounts.ContainsKey(saving))
+                                    savingCounts[saving] += 1;
+                                else
+                                    savingCounts.Add(saving, 1);
+                                uniqueCheats.Add((cheatsrow, cheatscol, cheaterow, cheatecol));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+HashSet<List<(int, int)>> GenerateCheats(int rows, int cols, int i, int j, int v)
+{
+    if (v == 0)
+    {
+        if (lines[i][j] != '#')
+            return new HashSet<List<(int, int)>>() { new List<(int, int)>() { (i, j) } };
+        else
+            return new HashSet<List<(int, int)>>() { };
+    }
+
+    HashSet<List<(int, int)>> gcresult = new HashSet<List<(int, int)>>();
+    foreach ((int dr, int dc) in adjacencies)
+    {
+        int newr = i + dr;
+        int newc = j + dc;
+        if (newr < 0 || newr >= rows || newc < 0 || newc >= cols)
+        {
+            continue;
+        }
+        var rec = GenerateCheats(rows, cols, newr, newc, v - 1);
+        foreach (var list in rec)
+        {
+            if (!list.Contains((i, j)))
+            {
+                var nlist = list.Prepend((i,j)).ToList();
+                gcresult.Add(nlist);
+            }
+        }
+    }
+    return gcresult;
 }
 
 int result = 0;
@@ -99,73 +173,20 @@ Console.WriteLine($"{result} cheats save at least 100 picoseconds");
     return (int.MaxValue, new List<(int, int)>());
 }
 
-(int, List<(int, int)>) CheckCheat(int r1, int c1, int r2, int c2, int rows, int cols, HashSet<(int, int)> nodes, Dictionary<(int, int), HashSet<(int, int)>> edges, string[] lines, int startrow, int endrow, int startcol, int endcol)
+// For cheats of arbitrary length.
+(int, List<(int, int)>) CheckCheat3(List<(int,int)> cheat, int rows, int cols, HashSet<(int, int)> nodes, int startrow, int endrow, int startcol, int endcol)
 {
-    if (r1 >= 0 && r1 < rows && r2 >= 0 && r2 < rows && c1 >= 0 && c1 < cols && c2 >= 0 && c2 < cols)
-    {
-        // This just ensures there is a potential advantage.
-        if (lines[r1][c1] == '#' || lines[r2][c2] == '#')
-        {
-            HashSet<(int, int)> rpnodes = new();
-            foreach (var p in nodes) rpnodes.Add(p);
-            var rpedges = new Dictionary<(int, int), HashSet<(int, int)>>();
-            foreach ((var node, var list) in edges)
-            {
-                var cpedges = new HashSet<(int, int)>();
-                foreach (var edgep in list) cpedges.Add(edgep);
-                rpedges.Add(node, cpedges);
-            }
-            // each cheat is directional so r1 to r2 edge needs adding
-            // and any links in and out of r1 and r2.
-            if (lines[r1][c1] == '#')
-            {
-                rpnodes.Add((r1, c1));
-                // Add edges into (r1,c1)
-                if (nodes.Contains((r1 - 1, c1))) rpedges[(r1 - 1, c1)].Add((r1, c1));
-                if (nodes.Contains((r1 + 1, c1))) rpedges[(r1 + 1, c1)].Add((r1, c1));
-                if (nodes.Contains((r1, c1 - 1))) rpedges[(r1, c1 - 1)].Add((r1, c1));
-                if (nodes.Contains((r1, c1 + 1))) rpedges[(r1, c1 + 1)].Add((r1, c1));
-                rpedges.Add((r1, c1), new HashSet<(int, int)>() { (r2, c2) });
-            }
-            else
-            {
-                // remove edges from (r1,c1) to other nodes except new (r2,c2)
-                rpedges.Remove((r1, c1));
-                rpedges.Add((r1, c1), new HashSet<(int, int)>() { (r2, c2) });
-            }
+    // we assume all are within bounds of the board, and that
+    // the cheat ends with a non-wall.
+    HashSet<(int, int)> rpnodes = new();
+    foreach (var p in nodes) rpnodes.Add(p);
+    foreach ((var crow, var ccol) in cheat)
+        rpnodes.Add((crow, ccol));
+    var rpedges = new Dictionary<(int, int), HashSet<(int, int)>>();
+    BuildEdges(rpnodes, rpedges);
 
-            if (lines[r2][c2] == '#')
-            {
-                rpnodes.Add((r2, c2));
-                // there should already be an edge to this node.
-                var newedges = new HashSet<(int, int)>();
-                rpedges.Add((r2, c2), newedges);
-                // add edges from r2,c2 to neighbours except r1,c1
-                if (nodes.Contains((r2 - 1, c2))) newedges.Add((r2 - 1, c2));
-                if (nodes.Contains((r2 + 1, c2))) newedges.Add((r2 + 1, c2));
-                if (nodes.Contains((r2, c2 - 1))) newedges.Add((r2, c2 - 1));
-                if (nodes.Contains((r2, c2 + 1))) newedges.Add((r2, c2 + 1));
-                if (newedges.Contains((r1, c1))) newedges.Remove((r1, c1));
-            }
-            else
-            {
-                // remove edges from other nodes into (r2,c2) except (r1,c1)
-                if (nodes.Contains((r2 - 1, c2))) rpedges[(r2 - 1, c2)].Remove((r2, c2));
-                if (nodes.Contains((r2 + 1, c2))) rpedges[(r2 + 1, c2)].Remove((r2, c2));
-                if (nodes.Contains((r2, c2 - 1))) rpedges[(r2, c2 - 1)].Remove((r2, c2));
-                if (nodes.Contains((r2, c2 + 1))) rpedges[(r2, c2 + 1)].Remove((r2, c2));
-            }
-
-            var rppath = ShortestPath(rpnodes, rpedges, startrow, startcol, endrow, endcol);
-            //if (edges[(3,1)].Contains((2, 1)))
-            //    Console.WriteLine("woopsie");
-            return rppath;
-        }
-    }
-    //if (edges[(3,1)].Contains((2, 1)))
-    //    Console.WriteLine("woopsie");
-
-    return (int.MaxValue, new List<(int, int)>());
+    var rppath = ShortestPath(rpnodes, rpedges, startrow, startcol, endrow, endcol);
+    return rppath;
 }
 
 (int,List<(int,int)>) ShortestPath(HashSet<(int, int)> nodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
