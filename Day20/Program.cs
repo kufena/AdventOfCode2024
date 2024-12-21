@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Data.Common;
+using System.Security.Cryptography;
 using System.Xml;
 using Utilities;
 
@@ -42,100 +43,79 @@ List<(int, int)> adjacencies = new List<(int, int)>() { (0, 1), (0, -1), (1, 0),
 
 Dictionary<(int, int), HashSet<(int, int)>> edges = new();
 BuildEdges(nodes, edges);
-
-(int initialSP, List<(int,int)> actualPath) = ShortestPath(nodes, edges, startrow, startcol, endrow, endcol);
+Dictionary<(int, int), int> endDistances = new();
+Dictionary<(int, int), int> startDistances = new();
+(int initialSP, List<(int,int)> actualPath) = ShortestPath(startDistances, nodes, edges, startrow, startcol, endrow, endcol);
 Console.WriteLine($"Shortest path is {initialSP} from {nodes.Count} nodes");
+(_, _) = ShortestPath(endDistances, nodes, edges, endrow, endcol, startrow, startcol);
 
-Dictionary<int, int> savingCounts = new();
-HashSet<(int, int, int, int)> uniqueCheats = new();
-
-for (int i = 1; i < rows-1; i++)
+// oh wow, distances from start need to go to all nodes incl walls. but
+// to get these we must remove walls one at a time. That's ok, we'll just
+// add them to startdistances above.
+for (int q = 0; q < rows; q++)
 {
-    for (int j = 1; j < cols-1; j++)
+    for (int w = 0; w < cols; w++)
     {
-        //if (i == startrow && j == startcol) continue;
-        //if (i == endrow && j == endcol) continue;
-
-        // should give us cheats of lenght 2 to maxcheat.
-        for (int count = 1; count < maxcheat; count++)
+        if (lines[q][w] == '#')
         {
-            //Console.WriteLine($"{(i, j)} count {count} so far {uniqueCheats.Count}");
-            HashSet<List<(int, int)>> AllCheats = GenerateCheats(rows, cols, i, j, count);
-            foreach (var cheat in AllCheats)
-            {
-                (int cheatsrow, int cheatscol) = cheat.First();
-                (int cheaterow, int cheatecol) = cheat.Last();
-                if (!uniqueCheats.Contains((cheatsrow, cheatscol, cheaterow, cheatecol))) 
-                {
-                    var cheatpath = CheckCheat3(cheat, rows, cols, nodes, startrow, endrow, startcol, endcol);
-                    (int len, List<(int, int)> path) = cheatpath;
-                    if (len < initialSP)
-                    {
-                        // check all steps used and in order.
-                        if (path.Contains(cheat.First()))
-                        {
-                            int ind = path.IndexOf(cheat.First());
-                            int k = 1;
-                            bool ok = true;
-                            while (k < cheat.Count)
-                            {
-                                int pop = path.IndexOf(cheat[k]);
-                                if (pop != ind + 1)
-                                {
-                                    ok = false;
-                                    break;
-                                }
-                                ind = pop;
-                                k++;
-                            }
-
-                            if (ok)
-                            {
-                                int saving = initialSP - len;
-                                if (savingCounts.ContainsKey(saving))
-                                    savingCounts[saving] += 1;
-                                else
-                                    savingCounts.Add(saving, 1);
-                                uniqueCheats.Add((cheatsrow, cheatscol, cheaterow, cheatecol));
-                            }
-                        }
-                    }
-                }
-            }
+            Dictionary<(int, int), int> subdistances = new();
+            HashSet<(int, int)> newnodes = new();
+            foreach (var n in nodes) newnodes.Add(n);
+            newnodes.Add((q, w));
+            Dictionary<(int, int), HashSet<(int, int)>> newedges = new();
+            BuildEdges(newnodes, newedges);
+            (int qwdist, _) = ShortestPath(subdistances, newnodes, newedges, q, w, startrow, startcol);
+            startDistances.Add((q, w), qwdist);
         }
     }
 }
 
-HashSet<List<(int, int)>> GenerateCheats(int rows, int cols, int i, int j, int v)
-{
-    if (v == 0)
-    {
-        if (lines[i][j] != '#')
-            return new HashSet<List<(int, int)>>() { new List<(int, int)>() { (i, j) } };
-        else
-            return new HashSet<List<(int, int)>>() { };
-    }
+Dictionary<int, int> savingCounts = new();
+HashSet<(int, int, int, int)> uniqueCheats = new();
 
-    HashSet<List<(int, int)>> gcresult = new HashSet<List<(int, int)>>();
-    foreach ((int dr, int dc) in adjacencies)
+// OK, go through the board, find the '.' 'E' or 'S' marks. These are
+// the end of your cheat.  Then find the 'L1 ball' around that mark.
+// That is, all the squares within the board that are at most 20 steps
+// away from the end. This is the start of the cheat.
+//
+// So, we have a cheat with start, end and length. The S to E path will
+// take pathlen(S, start) + cheat length + pathlen(end to E).
+//
+// The pathlen values are all calculated by the shortest path algorithm
+// with E or S as target. Should be quicker than the horrendous monstrosity
+// I first came up with.
+// 
+for (int i = 0; i < rows; i++)
+{
+    for (int j = 0; j < cols; j++)
     {
-        int newr = i + dr;
-        int newc = j + dc;
-        if (newr < 0 || newr >= rows || newc < 0 || newc >= cols)
+        //if (i == startrow && j == startcol) continue;
+        //if (i == endrow && j == endcol) continue;
+
+        
+        //Console.WriteLine($"{(i, j)} count {count} so far {uniqueCheats.Count}");
+        HashSet<(int, int, int)> AllCheats = GenerateCheats(rows, cols, i, j, maxcheat);
+        foreach (var cheat in AllCheats)
         {
-            continue;
-        }
-        var rec = GenerateCheats(rows, cols, newr, newc, v - 1);
-        foreach (var list in rec)
-        {
-            if (!list.Contains((i, j)))
+            (int cheatRow, int cheatCol, int cheatDistance) = cheat;
+            if (lines[cheatRow][cheatCol] == '#')
+                continue;
+            int startToI = startDistances[(i, j)];
+            int endToI = endDistances.ContainsKey((cheatRow,cheatCol)) ? endDistances[(cheatRow,cheatCol)] : int.MaxValue;
+            if (endToI == int.MaxValue || startToI == int.MaxValue) // unreachable
+                continue;
+            int pathDist = startToI + endToI + (cheatDistance-2); // mustn't count i,j and cheat end twice.
+            if (pathDist < initialSP) 
             {
-                var nlist = list.Prepend((i,j)).ToList();
-                gcresult.Add(nlist);
+                uniqueCheats.Add((i, j, cheatRow, cheatCol));
+                int saving = initialSP - pathDist;
+                if (savingCounts.ContainsKey(saving))
+                    savingCounts[saving]++;
+                else
+                    savingCounts.Add(saving, 1);
             }
         }
     }
-    return gcresult;
 }
 
 int result = 0;
@@ -147,53 +127,80 @@ foreach ((int k1, int v1) in savingCounts)
 Console.WriteLine($"{uniqueCheats.Count} unique cheats.");
 Console.WriteLine($"{result} cheats save at least 100 picoseconds");
 
+// FInd the L1 ball around (i,j) with max v.
+HashSet<(int, int, int)> GenerateCheats(int rows, int cols, int i, int j, int v)
+{
+    HashSet<(int, int, int)> gcresult = new();
+    for (int k = -v; k <= v; k++)
+    {
+        for (int l = -v; l <= v; l++)
+        {
+            int newi = i + k;
+            int newj = j + l;
+            if (newi == i && newj == j) continue;
+            
+            if (newi >= 0 && newi < rows && newj >= 0 && newj < cols)
+            {
+                int distance = Math.Abs(newi - i) + Math.Abs(newj - j);
+                if (distance <= v && distance > 1)
+                    gcresult.Add((newi, newj, distance));
+            }
+        }
+    }
+    var melist = gcresult.Select(x => x).Where(x => x.Item1 == i && x.Item2 == j).ToList();
+    if (melist.Count > 0)
+    {
+        Console.WriteLine($"We have {melist.Count} occurences of {(i, j)} here - wrongly!");
+    }
+    return gcresult;
+}
+
 //
 // This is a simpler version that simple removes a single # at a time, effectively.
 // It does this by making the second point have to be a '.' or 'S' or 'E'.
-(int, List<(int,int)>) CheckCheat2(int r1, int c1, int r2, int c2, int rows, int cols, HashSet<(int, int)> nodes, Dictionary<(int, int), HashSet<(int, int)>> edges, string[] lines, int startrow, int endrow, int startcol, int endcol)
-{
-    //if (r1 == 3 && r2 == 4 && c1 == 0 && c2 == 0)
-    //    Console.WriteLine("");
-    if (r1 >= 0 && r1 < rows && r2 >= 0 && r2 < rows && c1 >= 0 && c1 < cols && c2 >= 0 && c2 < cols)
-    {
-        // This just ensures there is a potential advantage.
-        if (lines[r1][c1] == '#' && lines[r2][c2] != '#')
-        {
-            HashSet<(int, int)> rpnodes = new ();
-            foreach (var p in nodes) rpnodes.Add(p);
-            rpnodes.Add((r1, c1));
-            rpnodes.Add((r2, c2));
-            var rpedges = new Dictionary<(int,int), HashSet<(int, int)>>();
-            BuildEdges(rpnodes, rpedges);
+//(int, List<(int,int)>) CheckCheat2(int r1, int c1, int r2, int c2, int rows, int cols, HashSet<(int, int)> nodes, Dictionary<(int, int), HashSet<(int, int)>> edges, string[] lines, int startrow, int endrow, int startcol, int endcol)
+//{
+//    //if (r1 == 3 && r2 == 4 && c1 == 0 && c2 == 0)
+//    //    Console.WriteLine("");
+//    if (r1 >= 0 && r1 < rows && r2 >= 0 && r2 < rows && c1 >= 0 && c1 < cols && c2 >= 0 && c2 < cols)
+//    {
+//        // This just ensures there is a potential advantage.
+//        if (lines[r1][c1] == '#' && lines[r2][c2] != '#')
+//        {
+//            HashSet<(int, int)> rpnodes = new ();
+//            foreach (var p in nodes) rpnodes.Add(p);
+//            rpnodes.Add((r1, c1));
+//            rpnodes.Add((r2, c2));
+//            var rpedges = new Dictionary<(int,int), HashSet<(int, int)>>();
+//            BuildEdges(rpnodes, rpedges);
 
-            var rppath = ShortestPath(rpnodes, rpedges, startrow, startcol, endrow, endcol);
-            return rppath;
-        }
-    }
+//            var rppath = ShortestPath(rpnodes, rpedges, startrow, startcol, endrow, endcol);
+//            return rppath;
+//        }
+//    }
 
-    return (int.MaxValue, new List<(int, int)>());
-}
+//    return (int.MaxValue, new List<(int, int)>());
+//}
 
-// For cheats of arbitrary length.
-(int, List<(int, int)>) CheckCheat3(List<(int,int)> cheat, int rows, int cols, HashSet<(int, int)> nodes, int startrow, int endrow, int startcol, int endcol)
-{
-    // we assume all are within bounds of the board, and that
-    // the cheat ends with a non-wall.
-    HashSet<(int, int)> rpnodes = new();
-    foreach (var p in nodes) rpnodes.Add(p);
-    foreach ((var crow, var ccol) in cheat)
-        rpnodes.Add((crow, ccol));
-    var rpedges = new Dictionary<(int, int), HashSet<(int, int)>>();
-    BuildEdges(rpnodes, rpedges);
+//// For cheats of arbitrary length.
+//(int, List<(int, int)>) CheckCheat3(List<(int,int)> cheat, int rows, int cols, HashSet<(int, int)> nodes, int startrow, int endrow, int startcol, int endcol)
+//{
+//    // we assume all are within bounds of the board, and that
+//    // the cheat ends with a non-wall.
+//    HashSet<(int, int)> rpnodes = new();
+//    foreach (var p in nodes) rpnodes.Add(p);
+//    foreach ((var crow, var ccol) in cheat)
+//        rpnodes.Add((crow, ccol));
+//    var rpedges = new Dictionary<(int, int), HashSet<(int, int)>>();
+//    BuildEdges(rpnodes, rpedges);
 
-    var rppath = ShortestPath(rpnodes, rpedges, startrow, startcol, endrow, endcol);
-    return rppath;
-}
+//    var rppath = ShortestPath(rpnodes, rpedges, startrow, startcol, endrow, endcol);
+//    return rppath;
+//}
 
-(int,List<(int,int)>) ShortestPath(HashSet<(int, int)> nodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
+(int,List<(int,int)>) ShortestPath(Dictionary<(int, int), int> distance, HashSet<(int, int)> nodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
 {
     UpdatablePriorityQueue upq = new();
-    Dictionary<(int, int), int> distance = new();
     Dictionary<(int, int), (int, int)> prev = new();
 
     (int, int) target = (endrow, endcol);
