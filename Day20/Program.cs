@@ -13,7 +13,7 @@ int startrow = 0;
 int startcol = 0;
 int endrow = 0;
 int endcol = 0;
-int maxcheat = 20;
+int maxcheat = 2;
 int minsaving = 50;
 
 HashSet<(int, int)> nodes = new();
@@ -59,7 +59,7 @@ for (int i = 1; i < rows-1; i++)
         // should give us cheats of lenght 2 to maxcheat.
         for (int count = 1; count < maxcheat; count++)
         {
-            Console.WriteLine($"{(i, j)} count {count} so far {uniqueCheats.Count}");
+            //Console.WriteLine($"{(i, j)} count {count} so far {uniqueCheats.Count}");
             HashSet<List<(int, int)>> AllCheats = GenerateCheats(rows, cols, i, j, count);
             foreach (var cheat in AllCheats)
             {
@@ -86,6 +86,7 @@ for (int i = 1; i < rows-1; i++)
                                     break;
                                 }
                                 ind = pop;
+                                k++;
                             }
 
                             if (ok)
