@@ -28,6 +28,37 @@ directionalPositions.Add('>', (1, 2));
 directionalPositions.Add('^', (0, 1));
 directionalPositions.Add('A', (0, 2));
 
+Dictionary<string, List<string>> numtokeyTranslations = new();
+numtokeyTranslations.Add("AA", new List<string>() { "A" });
+numtokeyTranslations.Add("A>", new List<string>() { "vA" });
+numtokeyTranslations.Add("A<", new List<string>() { "<v<A", "v<<A"});
+numtokeyTranslations.Add("A^", new List<string>() { "<A" });
+numtokeyTranslations.Add("Av", new List<string>() { "v<A","<vA"});
+
+numtokeyTranslations.Add(">A", new List<string>() { "^A" });
+numtokeyTranslations.Add(">>", new List<string>() { "A" });
+numtokeyTranslations.Add("><", new List<string>() { "<<A" });
+numtokeyTranslations.Add(">^", new List<string>() { "<^A", "^<A"});
+numtokeyTranslations.Add(">v", new List<string>() { "<A" });
+
+numtokeyTranslations.Add("<A", new List<string>() { ">^>A", ">>^A" });
+numtokeyTranslations.Add("<>", new List<string>() { ">>A" });
+numtokeyTranslations.Add("<<", new List<string>() { "A" });
+numtokeyTranslations.Add("<^", new List<string>() { ">^A" });
+numtokeyTranslations.Add("<v", new List<string>() { ">A" });
+
+numtokeyTranslations.Add("^A", new List<string>() { ">A" });
+numtokeyTranslations.Add("^>", new List<string>() { "v>A", ">vA" });
+numtokeyTranslations.Add("^<", new List<string>() { "v<A" });
+numtokeyTranslations.Add("^^", new List<string>() { "A" });
+numtokeyTranslations.Add("^v", new List<string>() { "vA" });
+
+numtokeyTranslations.Add("vA", new List<string>() { ">^A", "^>A" });
+numtokeyTranslations.Add("v>", new List<string>() { ">A" });
+numtokeyTranslations.Add("v<", new List<string>() { "<A" });
+numtokeyTranslations.Add("v^", new List<string>() { "^A" });
+numtokeyTranslations.Add("vv", new List<string>() { "A" });
+
 (int, int) five = (1, 1);
 
 KeypadToKeypad("<A>A<AAv<AA>>^AvAA^Av<AAA>^A");
@@ -39,21 +70,35 @@ foreach (var line in lines)
     int startrow = 3;
     int startcol = 2;
     StringBuilder numericInstructions = new();
+    StringBuilder resultbuilder = new();
     for (int k = 0; k < line.Length; k++)
     {
+        // Do each digit at a time. They all end on A, so
+        // the keypad steps will all end in the same place.
         (int newstartrow, int newstartcol, string prefix) = NumericMove(startrow, startcol, line[k]);
         numericInstructions.Append(prefix);
         startrow = newstartrow;
         startcol = newstartcol;
+        List<string> possiblePaths = NumericToKeypad(prefix);
+        int pathlen = int.MaxValue;
+        string chosen = "";
+        foreach (string path in possiblePaths)
+        {
+            string finalencoding = KeypadToKeypad(path);
+            if (finalencoding.Length < pathlen)
+            {
+                chosen = finalencoding;
+                pathlen = finalencoding.Length;
+            }
+        }
+        resultbuilder.Append(chosen);
     }
     Console.WriteLine(numericInstructions.ToString());
-    string keyresult = KeypadToKeypad(numericInstructions.ToString());
-    Console.WriteLine($"{keyresult.Length} |{keyresult}|");
-    keyresult = KeypadToKeypad(keyresult);
-    Console.WriteLine($"{keyresult.Length} |{keyresult}|");
+    string finalresult = resultbuilder.ToString();
+    Console.WriteLine(finalresult);
     int q = int.Parse(line.Substring(0,line.Length - 1));
-    Console.WriteLine($"{line.Substring(0, line.Length - 1)} {q * keyresult.Length}");
-    result += (long)(q * keyresult.Length);
+    Console.WriteLine($"{line.Substring(0, line.Length - 1)} {q * finalresult.Length}");
+    result += (long)(q * finalresult.Length);
     Console.WriteLine("");
 }
 
@@ -92,6 +137,34 @@ Console.WriteLine(result);
     }
     sb.Append("A");
     return (xrow, xcol, sb.ToString());
+}
+
+// This middle step needs to enumerate all the paths between a number
+// of instructions, so that we can choose the one that encodes to the
+// smallest set of instructions in the next step.
+//
+// I think, though, that as they all end in A, each numeric is on its
+// own, so they don't interact.
+List<string> NumericToKeypad(string instructions)
+{
+    // numtokeyTranslations does all the work here.
+    instructions = $"A{instructions}";
+    List<string> sofar = new List<string>() { "" };
+    for (int i = 1; i < instructions.Length; i++)
+    {
+        string sb = instructions.Substring(i - 1, 2);
+        List<string> trans = numtokeyTranslations[sb];
+        List<string> sofarsofar = new List<string>();
+        foreach (var p in trans)
+        {
+            foreach (var t in sofar)
+            {
+                sofarsofar.Add($"{t}{p}");
+            }
+        }
+        sofar = sofarsofar;
+    }
+    return sofar;
 }
 
 string KeypadToKeypad(string instructions)
