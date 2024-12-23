@@ -11,16 +11,23 @@ Part2(iters, lines);
 //
 // Find a sequence of changes that gives a max bananas sale.
 //
+// Strategy - go though all secrets, calculating sales vals and diffs.
+// Then find all sequences of four differences. For the input that is
+// about 40000. Then go through each, calculating the price you'll get
+// for each secret, and that's the value.
+//
 void Part2(int iters, string[] lines)
 {
     int[][] diffs = new int[lines.Length][];
     int[][] saleval = new int[lines.Length][];
-    long total = 0;
+    int total = 0;
     for(int r = 0; r < lines.Length; r++)
     {
         var line = lines[r];
         diffs[r] = new int[iters];
         saleval[r] = new int[iters];
+        diffs[r][0] = -1;
+        saleval[r][0] = -1;
         long lastsecret = 0;
         long secret = long.Parse(line);
         for (int i = 0; i < iters; i++)
@@ -31,9 +38,44 @@ void Part2(int iters, string[] lines)
             diffs[r][i] = i > 0 ? saleval[r][i] - saleval[r][i - 1] : 0;
             //Console.WriteLine($"iter {i} -> {secret}");
         }
-        total += secret;
     }
 
+    HashSet<( int, int, int, int)> foursomes = new();
+    for (int r = 0; r < lines.Length; r++) {
+        for (int i = 3; i < iters; i++)
+        {
+            (int, int, int, int) four = (diffs[r][i - 3], diffs[r][i - 2], diffs[r][i - 1], diffs[r][i]);
+            foursomes.Add(four);
+        }
+    }
+    Console.WriteLine($"{foursomes.Count} unique fours.");
+    total = 0;
+    foreach (var f in foursomes)
+    {
+        if (f == (-2, 1, -1, 3))
+            Console.WriteLine("whoop");
+        int t = 0;
+        for (int r = 0; r < lines.Length; r++)
+        {
+            int x = 0;
+            for (int i = 3; i < iters; i++)
+            {
+                if ((diffs[r][i - 3], diffs[r][i - 2], diffs[r][i - 1], diffs[r][i]) == f)
+                {
+                    //    if (saleval[r][i] > x) 
+                    //        x = saleval[r][i];
+                    x = saleval[r][i];
+                    // once we see the diff, we move to the next seller.
+                    // that's what the instructions say, anyway.
+                    break;
+                }
+            }
+            t += x;
+        }
+        if (t > total) 
+            total = t;
+        Console.WriteLine($"{f} {t} {total}");
+    }
     Console.WriteLine(total);
 }
 
