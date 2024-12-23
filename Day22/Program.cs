@@ -5,6 +5,7 @@ Console.WriteLine("Hello, World!");
 int iters = 2000;
 var lines = File.ReadAllLines(args[0]);
 
+//Part2Take2(iters, lines);
 Part2(iters, lines);
 //Part1(iters, lines);
 
@@ -16,7 +17,7 @@ Part2(iters, lines);
 // about 40000. Then go through each, calculating the price you'll get
 // for each secret, and that's the value.
 //
-void Part2(int iters, string[] lines)
+void Part2Take2(int iters, string[] lines)
 {
     int[][] diffs = new int[lines.Length][];
     int[][] saleval = new int[lines.Length][];
@@ -41,13 +42,13 @@ void Part2(int iters, string[] lines)
     }
 
     HashSet<( int, int, int, int)> foursomes = new();
-    for (int r = 0; r < lines.Length; r++) {
-        for (int i = 3; i < iters; i++)
-        {
-            (int, int, int, int) four = (diffs[r][i - 3], diffs[r][i - 2], diffs[r][i - 1], diffs[r][i]);
-            foursomes.Add(four);
-        }
+    (int, int, int, int) firstfour = (-1, -1, -1, -1);
+    for (int i = 3; i < iters; i++)
+    {
+        firstfour = (diffs[0][i - 3], diffs[0][i - 2], diffs[0][i - 1], diffs[0][i]);
+        foursomes.Add(firstfour);
     }
+
     Console.WriteLine($"{foursomes.Count} unique fours.");
     total = 0;
     foreach (var f in foursomes)
@@ -73,6 +74,70 @@ void Part2(int iters, string[] lines)
             t += x;
         }
         if (t > total) 
+            total = t;
+        Console.WriteLine($"{f} {t} {total}");
+    }
+    Console.WriteLine(total);
+}
+
+void Part2(int iters, string[] lines)
+{
+    int[][] diffs = new int[lines.Length][];
+    int[][] saleval = new int[lines.Length][];
+    int total = 0;
+    for (int r = 0; r < lines.Length; r++)
+    {
+        var line = lines[r];
+        long secret = long.Parse(line);
+        diffs[r] = new int[iters+1];
+        saleval[r] = new int[iters + 1];
+        diffs[r][0] = 0;
+        saleval[r][0] = (int)(secret % 10); // FFS - setting this to -1 was never going to work.
+        long lastsecret = 0;
+        for (int i = 1; i < iters+1; i++)
+        {
+            lastsecret = secret;
+            secret = SecretSteps(secret);
+            saleval[r][i] = (int)(secret % 10);
+            diffs[r][i] = i > 0 ? saleval[r][i] - saleval[r][i - 1] : 0;
+            //Console.WriteLine($"iter {i} -> {secret}");
+        }
+    }
+
+    HashSet<(int, int, int, int)> foursomes = new();
+    for (int r = 0; r < lines.Length; r++)
+    {
+        for (int i = 4; i < iters+1; i++)
+        {
+            (int, int, int, int) four = (diffs[r][i - 3], diffs[r][i - 2], diffs[r][i - 1], diffs[r][i]);
+            foursomes.Add(four);
+        }
+    }
+    Console.WriteLine($"{foursomes.Count} unique fours.");
+    total = 0;
+    foreach (var f in foursomes)
+    {
+        if (f == (-2, 1, -1, 3))
+            Console.WriteLine("whoop");
+        int t = 0;
+        for (int r = 0; r < lines.Length; r++)
+        {
+            int x = 0;
+            for (int i = 4; i < iters+1; i++)
+            {
+                if ((diffs[r][i - 3], diffs[r][i - 2], diffs[r][i - 1], diffs[r][i]) == f)
+                {
+                    //    if (saleval[r][i] > x) 
+                    //        x = saleval[r][i];
+                    x = saleval[r][i];
+                    // once we see the diff, we move to the next seller.
+                    // that's what the instructions say, anyway.
+                    break;
+                }
+            }
+            t += x;
+        }
+        if (t > total)
             total = t;
         Console.WriteLine($"{f} {t} {total}");
     }
