@@ -47,33 +47,90 @@ foreach (var p in edges)
     }
 }
 
-//var nodearr = nodes.ToArray();
-//int n = 0;
-//for (int i = 0; i < nodearr.Length - 2; i++)
-//{
-//    for (int j = 1; j < nodearr.Length - 1; j++)
-//        for (int k = 2; k < nodearr.Length; k++)
-//        {
-//            string[] dim = new string[3] { nodearr[i], nodearr[j], nodearr[k] };
-//            Array.Sort(dim); // these should be unique triples.
-//            if (edges.Contains((dim[0], dim[1])) && edges.Contains((dim[1], dim[2])) && edges.Contains((dim[0], dim[2])))
-//            {
-//                if (!triples.Contains((dim[0], dim[1], dim[2])))
-//                {
-//                    triples.Add((dim[0], dim[1], dim[2]));
-//                    if (dim[0].StartsWith("t") || dim[1].StartsWith("t") || dim[2].StartsWith("t"))
-//                        count++;
-//                }
-//            }
-//            n++;
-//            if (n % 1000 == 0) Console.WriteLine(n);
-//        }
-//}
 Console.WriteLine($"triples ={triples.Count}");
+//foreach (var t in triples)
+//{
+//    if (t.Item1.StartsWith("t") || t.Item2.StartsWith("t") || t.Item3.StartsWith("t"))
+//        count++;
+//    Console.WriteLine(t);
+//}
+Console.WriteLine(count);
+
+List<HashSet<string>> all = new();
+int jj = 0;
 foreach (var t in triples)
 {
-    if (t.Item1.StartsWith("t") || t.Item2.StartsWith("t") || t.Item3.StartsWith("t"))
-        count++;
-    Console.WriteLine(t);
+    jj++;
+    Console.WriteLine($"Triple {t} num {jj}");
+    HashSet<string> bigset = new();
+    bigset.Add(t.Item1);
+    bigset.Add(t.Item2);
+    bigset.Add(t.Item3);
+
+    bool change = true;
+    while (change)
+    {
+        HashSet<string> newset = new() ;
+        bool first = true;
+        foreach (var x in bigset)
+        {
+            HashSet<string> nedgeupset = new();
+            var nedgeup = edges.
+                            Where(p => p.Item1 == x || p.Item2 == x).
+                            ToList();
+            // we need an intersection somewhere.
+            foreach (var nod in nedgeup)
+            {
+                nedgeupset.Add(nod.Item1);
+                nedgeupset.Add(nod.Item2);
+            }
+            if (first)
+            {
+                first = false;
+                newset = nedgeupset;
+            }
+            else
+            {
+                newset = newset.Intersect(nedgeupset).ToHashSet();
+            }
+        }
+
+        if (bigset.Count > newset.Count)
+        {
+            bigset = newset;
+            break; // this should not happen?
+        }
+        change = (bigset.Count != newset.Count);
+        if (jj == 11)
+            Console.WriteLine($"{bigset.Count} vs {newset.Count} round and round and round.");
+        bigset = newset;
+    }
+    all.Add(bigset);
 }
-Console.WriteLine(count);
+
+int size = 0;
+HashSet<string> theone = new();
+foreach (var bs in all)
+{
+    if (bs.Count > size)
+    {
+        size = bs.Count;
+        theone = bs;
+    }
+}
+
+Console.WriteLine($"{size}");
+if (theone != null)
+{
+    string[] sz = new string[theone.Count];
+    int i = 0;
+    foreach (var s in theone)
+    {
+        sz[i] = s;
+        i++;
+    }
+    Array.Sort(sz);
+    for (i = 0; i < sz.Length; i++)
+        Console.Write($"{sz[i]},");
+    Console.WriteLine($"");
+}
