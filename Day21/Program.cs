@@ -28,6 +28,8 @@ directionalPositions.Add('>', (1, 2));
 directionalPositions.Add('^', (0, 1));
 directionalPositions.Add('A', (0, 2));
 
+Dictionary<string, List<string>> numkeypadMoves = new();
+
 Dictionary<string, List<string>> numtokeyTranslations = new();
 numtokeyTranslations.Add("AA", new List<string>() { "A" });
 numtokeyTranslations.Add("A>", new List<string>() { "vA" });
@@ -61,41 +63,154 @@ numtokeyTranslations.Add("vv", new List<string>() { "A" });
 
 (int, int) five = (1, 1);
 
-KeypadToKeypad("<A>A<AAv<AA>>^AvAA^Av<AAA>^A");
+foreach (var keypos1 in keypadPositions)
+{
+    (char key1, (int pos1row, int pos1col)) = keypos1; 
+    foreach (var keypos2 in keypadPositions)
+    {
+        (char key2, (int pos2row, int pos2col)) = keypos2;
+        string newkey = $"{key1}{key2}";
+        if (key1 == 'A' && key2 == '0')
+            Console.WriteLine("");
+
+
+        if (key1 == key2) // no path, just A
+        {
+            numkeypadMoves.Add(newkey, new List<string>() { "A" });
+            continue;
+        }
+
+        if (pos1row == pos2row) // just cols change - one path.
+        {
+            StringBuilder sb = new();
+            if (pos1col < pos2col)
+            {
+                for (int q = pos1col; q < pos2col; q++)
+                {
+                    sb.Append('>');
+                }
+            }
+            else
+            {
+                for (int q = pos2col; q < pos1col; q++)
+                {
+                    sb.Append('<');
+                }
+            }
+            sb.Append('A');
+            numkeypadMoves.Add(newkey, new List<string>() { sb.ToString() });
+            continue;
+        }
+
+        if (pos1col == pos2col) // just rows change - one path.
+        {
+            StringBuilder sb = new();
+            if (pos1row < pos2row)
+            {
+                for (int q = pos1row; q < pos2row; q++)
+                {
+                    sb.Append('v');
+                }
+            }
+            else
+            {
+                for (int q = pos2row; q < pos1row; q++)
+                {
+                    sb.Append('^');
+                }
+            }
+            sb.Append('A');
+            numkeypadMoves.Add(newkey, new List<string>() { sb.ToString() });
+            continue;
+        }
+
+        int drow = 0;
+        int dcol = 0;
+        char rowchar = ' ';
+        char colchar = ' ';
+        if (pos2row < pos1row)
+        {
+            drow = -1;
+            rowchar = '^';
+        }
+        else
+        {
+            drow = 1;
+            rowchar = 'v';
+        }
+        if (pos2col < pos1col)
+        {
+            dcol = -1;
+            colchar = '<';
+        }
+        else
+        {
+            dcol = 1;
+            colchar = '>';
+        }
+        var res = EnumerateRoutes(pos1row, pos1col, pos2row, pos2col, drow, dcol, rowchar, colchar);
+        numkeypadMoves.Add(newkey, res.ToList());
+    }
+}
+
+HashSet<string> EnumerateRoutes(int row, int col, int destrow, int destcol, int drow, int dcol, char rowchar, char colchar)
+{
+    HashSet<string> routes = new HashSet<string>();
+    if (row == 3 && col == 0) // it's the blank.
+        return routes;
+
+    if (row > 4 || row < 0 || col > 4 || col < 0)
+        return routes;
+
+    if (row == destrow && col == destcol) // we're there!
+        routes.Add("A");
+    else
+    {
+        var ans1 = EnumerateRoutes(row + drow, col, destrow, destcol, drow, dcol, rowchar, colchar);
+        foreach (var l in ans1) routes.Add($"{rowchar}{l}");
+        var ans2 = EnumerateRoutes(row, col + dcol, destrow, destcol, drow, dcol, rowchar, colchar);
+        foreach (var l in ans2) routes.Add($"{colchar}{l}");
+    }
+    return routes;
+}
 
 long result = 0;
 foreach (var line in lines)
 {
-    Console.WriteLine(line);
     int startrow = 3;
     int startcol = 2;
     StringBuilder numericInstructions = new();
     StringBuilder resultbuilder = new();
-    for (int k = 0; k < line.Length; k++)
+    string withA = $"A{line}";
+    Console.WriteLine(withA);
+    for (int k = 0; k < withA.Length-1; k++)
     {
         // Do each digit at a time. They all end on A, so
         // the keypad steps will all end in the same place.
-        (int newstartrow, int newstartcol, string prefix) = NumericMove(startrow, startcol, line[k]);
-        numericInstructions.Append(prefix);
-        startrow = newstartrow;
-        startcol = newstartcol;
-        List<string> possiblePaths = NumericToKeypad(prefix);
+        string nummv = withA.Substring(k, 2);
+        var numpaths = numkeypadMoves[nummv];
+        Console.WriteLine($"{nummv} gives {numpaths.Count} paths");
+        foreach (var nmp in numpaths) Console.Write($"{nmp} ");
+        Console.WriteLine("");
         int pathlen = int.MaxValue;
         string chosen = "";
-        foreach (string path in possiblePaths)
+        foreach (var prefix in numpaths)
         {
-            string finalencoding = KeypadToKeypad(path);
-            if (finalencoding.Length < pathlen)
+            List<string> possiblePaths = NumericToKeypad(prefix);
+            foreach (string path in possiblePaths)
             {
-                chosen = finalencoding;
-                pathlen = finalencoding.Length;
+                string finalencoding = KeypadToKeypad(path);
+                if (finalencoding.Length < pathlen)
+                {
+                    chosen = finalencoding;
+                    pathlen = finalencoding.Length;
+                }
             }
         }
         resultbuilder.Append(chosen);
     }
-    Console.WriteLine(numericInstructions.ToString());
     string finalresult = resultbuilder.ToString();
-    Console.WriteLine(finalresult);
+    Console.WriteLine($"{finalresult}  {finalresult.Length}");
     int q = int.Parse(line.Substring(0,line.Length - 1));
     Console.WriteLine($"{line.Substring(0, line.Length - 1)} {q * finalresult.Length}");
     result += (long)(q * finalresult.Length);
