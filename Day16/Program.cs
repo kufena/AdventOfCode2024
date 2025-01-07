@@ -153,31 +153,20 @@ HashSet<(int,int)> NodesOnPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(
 {
     HashSet<(int,int)> points = new HashSet<(int, int)>();
     int counter = 1;
-    // depth first search.
-    //Queue<(List<(int,int)>, long, string)> workQueue = new();
-    PriorityQueue<(List<(int, int)>, long, string), long> workPQueue = new();
 
+    PriorityQueue<(List<(int, int)>, long, string), long> workPQueue = new();
     workPQueue.Enqueue((new List<(int, int)>() { (startrow, startcol) }, 0, ">"), 0);
-    //workQueue.Enqueue((new List<(int, int)>() { (startrow, startcol) }, 0, ">"));
-    // breadth first search.
-    //Stack<(List<(int, int)>, long, string, string)> workStack = new();
-    //workStack.Push((new List<(int, int)>() { (startrow, startcol) }, 0, ">", ">"));
+
     HashSet<(int, int, string)> memos = new();
-    //memos.Add((startrow, startcol, ">"));
 
     while (workPQueue.Count > 0)
-        //while (workQueue.Count > 0)
-        //while (workStack.Count > 0)
     {
 
-            //        if (counter % 100000000 == 0) Console.WriteLine($"{counter} {workStack.Count}");
         if (counter % 1000000 == 0) 
             Console.WriteLine($"{counter} {workPQueue.Count}");
         counter++;
 
         (List<(int, int)> current, long cost, string direction) = workPQueue.Dequeue();
-        //(List<(int, int)> current, long cost, string direction) = workQueue.Dequeue();
-        //        (List<(int, int)> current, long cost, string direction, string prefix) = workStack.Pop();
 
         if (cost > maxlen)
             continue; // we know the shortest already.
@@ -186,7 +175,6 @@ HashSet<(int,int)> NodesOnPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(
         if (currow == endrow && curcol == endcol && cost == maxlen)
         {
             Console.WriteLine($"Found one of {current.Count} points.");
-//            Console.WriteLine(prefix);
             foreach (var p in current)
             {
                 points.Add(p);
@@ -217,11 +205,11 @@ HashSet<(int,int)> NodesOnPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(
                     toAdd.Add(newdirection, (curcopy, cost + newcostdelta, newdirection));
                 }
             }
+            // This bit is no longer strictly necessary now we use a priority queue,
+            // prioritized on the cost.
             if (toAdd.ContainsKey(direction)) // least cost, add first.
             {
                 (List<(int, int)> nlist, long ncost, string ndir) = toAdd[direction];
-                //                    workStack.Push((curcopy, cost + newcostdelta, newdirection, newprefix));
-                //workQueue.Enqueue((nlist, ncost, ndir));
                 workPQueue.Enqueue((nlist, ncost, ndir), ncost);
             }
             foreach (var k in toAdd.Keys)
@@ -229,10 +217,7 @@ HashSet<(int,int)> NodesOnPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(
                 if (k != direction)
                 {
                     (List<(int, int)> nlist, long ncost, string ndir) = toAdd[k];
-                    //                    workStack.Push((curcopy, cost + newcostdelta, newdirection, newprefix));
-                    //workQueue.Enqueue((nlist, ncost, ndir));
                     workPQueue.Enqueue((nlist, ncost, ndir), ncost);
-
                 }
             }
         }
