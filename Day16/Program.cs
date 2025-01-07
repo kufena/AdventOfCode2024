@@ -66,24 +66,10 @@ foreach (var node in nodes)
 var tests = new UPQTests();
 tests.Tests();
 
-//AllPaths(nodes, graphNodes, edges, startrow, startcol, endrow, endcol);
-//AllPathsDFS(nodes, graphNodes, edges, startrow, startcol, endrow, endcol);
-
-ShortestPath(nodes, graphNodes, startrow, startcol, endrow, endcol);
-
-//Thread th = new Thread(() =>
-//{
-//    HashSet<(int, int)> seen = new();
-//    Dictionary<(int, int), string> memo = new();
-//    string prefix = "";
-//    string path = FindPaths(prefix, ">", startrow, startcol, endrow, endcol, mazeblockers, memo, seen);
-//    path = $">{path}";
-//    Console.WriteLine($"{path}");
-//    Console.WriteLine($"{prefixToCount(path)}");
-//}, int.MaxValue);
-//th.Start();
-//th.Join();
-
+//ShortestPath(nodes, graphNodes, startrow, startcol, endrow, endcol, true);
+int maxlen = ShortestPath(nodes, graphNodes, startrow, startcol, endrow, endcol, true);
+var points = NodesOnPaths(nodes, graphNodes, startrow, startcol, endrow, endcol, maxlen);
+Console.WriteLine(points.Count);
 
 //
 // There's a notion here of the nodes being a row, column and direction. And hence,
@@ -91,7 +77,9 @@ ShortestPath(nodes, graphNodes, startrow, startcol, endrow, endcol);
 // I'm not sure I've captured that here very well.
 //
 // It worked, anyway.
-void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, int startrow, int startcol, int endrow, int endcol)
+int ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, 
+                  int startrow, int startcol, int endrow, int endcol,
+                  bool part1)
 {
     UpdatablePriorityQueue upq = new();
     Dictionary<Node, int> distance = new();
@@ -119,7 +107,11 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
             var uprev = prev[u];
             if (uprev == null)
                 uprev = u;
-            int stepdist = (int) dirChangeCost((uprev.row, uprev.col), coord, (v.row, v.col));
+            //
+            // Change call to dirChangeCost(...) to 1 to get a basic
+            // shortest path count.
+            //
+            int stepdist = (int) (part1 ? dirChangeCost((uprev.row, uprev.col), coord, (v.row, v.col)) : 1);
             int alt = udistance + stepdist;
             if (alt >= 0 && alt < distance[v]) // if we have a negative new dist then don't put that in.
             {
@@ -152,96 +144,117 @@ void ShortestPath(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Nod
     // so that's ok.
     Console.WriteLine(finaldist+1);
     Console.WriteLine($"What now?");
+
+    return distance[target]; // distance[target];
 }
 
-void AllPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
+HashSet<(int,int)> NodesOnPaths(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes,
+                  int startrow, int startcol, int endrow, int endcol, int maxlen)
 {
-    HashSet<string> results = new();
-    Queue<List<(int, int)>> toDo = new();
-    long total = 322060; // long.MaxValue;
-    toDo.Enqueue(new List<(int, int)>() { (startrow, startcol) });
-    while (toDo.Count > 0)
+    HashSet<(int,int)> points = new HashSet<(int, int)>();
+    int counter = 1;
+    // depth first search.
+    //Queue<(List<(int,int)>, long, string)> workQueue = new();
+    PriorityQueue<(List<(int, int)>, long, string), long> workPQueue = new();
+
+    workPQueue.Enqueue((new List<(int, int)>() { (startrow, startcol) }, 0, ">"), 0);
+    //workQueue.Enqueue((new List<(int, int)>() { (startrow, startcol) }, 0, ">"));
+    // breadth first search.
+    //Stack<(List<(int, int)>, long, string, string)> workStack = new();
+    //workStack.Push((new List<(int, int)>() { (startrow, startcol) }, 0, ">", ">"));
+    HashSet<(int, int, string)> memos = new();
+    //memos.Add((startrow, startcol, ">"));
+
+    while (workPQueue.Count > 0)
+        //while (workQueue.Count > 0)
+        //while (workStack.Count > 0)
     {
-        Console.WriteLine($"{toDo.Count} left. {results.Count} results so far.");
-        var nextStep = toDo.Dequeue();
-        (int nr, int nc) = nextStep.Last();
 
-        if (nr == endrow && nc == endcol)
-        {
-            results.Add(pathToString(nextStep));
-            long val = prefixToCount(pathToString(nextStep));
-            if (val < total) total = val;
-            continue;
-        }
+            //        if (counter % 100000000 == 0) Console.WriteLine($"{counter} {workStack.Count}");
+        if (counter % 1000000 == 0) 
+            Console.WriteLine($"{counter} {workPQueue.Count}");
+        counter++;
 
-        if (edges.ContainsKey((nr, nc))) // it has edges!
+        (List<(int, int)> current, long cost, string direction) = workPQueue.Dequeue();
+        //(List<(int, int)> current, long cost, string direction) = workQueue.Dequeue();
+        //        (List<(int, int)> current, long cost, string direction, string prefix) = workStack.Pop();
+
+        if (cost > maxlen)
+            continue; // we know the shortest already.
+
+        (int currow, int curcol) = current.Last();
+        if (currow == endrow && curcol == endcol && cost == maxlen)
         {
-            var toadd = edges[(nr, nc)];
-            foreach ((int candr, int candc) in toadd)
+            Console.WriteLine($"Found one of {current.Count} points.");
+//            Console.WriteLine(prefix);
+            foreach (var p in current)
             {
-                if (!nextStep.Contains((candr, candc))) // no loops
+                points.Add(p);
+            }
+        }
+        else
+        {
+            memos.Add((currow, curcol, direction));
+            var nexts = edges[(currow, curcol)];
+            Dictionary<string, (List<(int, int)>, long, string)> toAdd = new();
+            foreach (var npoint in nexts)
+            {
+                if (!current.Contains(npoint)) // no loopy loops
                 {
-                    List<(int, int)> candlist = new();
-                    foreach (var p in nextStep) candlist.Add(p);
-                    candlist.Add((candr, candc));
-                    if (prefixToCount(pathToString(candlist)) < total) // not going to do better so bail out.
-                        toDo.Enqueue(candlist);
-                
+                    (long newcostdelta, string newdirection) = GenerateNewCost(currow, curcol, npoint.Item1, npoint.Item2, direction);
+                    if (cost + newcostdelta > maxlen) // don't bother.
+                        continue;
+                    //                    string newprefix = $"{prefix}{newdirection}";
+                    if (memos.Contains((npoint.Item1, npoint.Item2, newdirection)))
+                    {
+                        //Console.WriteLine($"seen it - {(npoint.Item1, npoint.Item2, newdirection, cost + newcostdelta)}");
+                        continue;
+                    }
+
+                    List<(int, int)> curcopy = new();
+                    foreach (var cc in current) curcopy.Add(cc);
+                    curcopy.Add(npoint);
+                    toAdd.Add(newdirection, (curcopy, cost + newcostdelta, newdirection));
                 }
-                //else
-                //    Console.WriteLine("Loop found - throw it away.");
+            }
+            if (toAdd.ContainsKey(direction)) // least cost, add first.
+            {
+                (List<(int, int)> nlist, long ncost, string ndir) = toAdd[direction];
+                //                    workStack.Push((curcopy, cost + newcostdelta, newdirection, newprefix));
+                //workQueue.Enqueue((nlist, ncost, ndir));
+                workPQueue.Enqueue((nlist, ncost, ndir), ncost);
+            }
+            foreach (var k in toAdd.Keys)
+            {
+                if (k != direction)
+                {
+                    (List<(int, int)> nlist, long ncost, string ndir) = toAdd[k];
+                    //                    workStack.Push((curcopy, cost + newcostdelta, newdirection, newprefix));
+                    //workQueue.Enqueue((nlist, ncost, ndir));
+                    workPQueue.Enqueue((nlist, ncost, ndir), ncost);
+
+                }
             }
         }
+
     }
-    Console.WriteLine($"Found {results.Count} paths.");
-    Console.WriteLine($"Shortest is {total}");
+
+    return points;
 }
 
-void AllPathsDFS(Dictionary<Node, (int, int)> nodes, Dictionary<(int, int), Node> graphNodes, Dictionary<(int, int), HashSet<(int, int)>> edges, int startrow, int startcol, int endrow, int endcol)
+(long newcostdelta, string newdirection) GenerateNewCost(int currow, int curcol, int newrow, int newcol, string direction)
 {
-    //Dictionary<Node, List<List<Node>> memo = new();
-
-    long total = long.MaxValue;
-    Stack<Node> nodesLeft = new();
-    Node start = graphNodes[(startrow, startcol)];
-    nodesLeft.Push(start);
-    while (nodesLeft.Count > 0)
-    {
-        Node n = nodesLeft.Peek();
-
-        if (n.row == endrow && n.col == endcol)
-        {
-            List<(int, int)> path = new();
-            for (int i = 0; i < nodesLeft.Count; i++)
-            {
-                path.Add((nodesLeft.ElementAt(i).row, nodesLeft.ElementAt(i).col));
-            }
-            long t = prefixToCount(pathToString(path));
-            Console.WriteLine($"Found a path of length {t}");
-            Console.WriteLine(pathToString(path));
-            if (t < total) total = t;
-            nodesLeft.Pop();
-            continue;
-        }
-
-        Node to = n.NextEdge();
-        while (to != null)
-        {
-            if (!nodesLeft.Contains(to))
-            {
-                nodesLeft.Push(to);
-                break;
-            }
-            to = n.NextEdge();
-        }
-
-        if (to == null)
-        {
-            n.Reset();
-            nodesLeft.Pop();
-        }
-    }
-    Console.WriteLine($"Lowest cost is {total}");
+    string newdirection = "";
+    long newcostdelta = 0;
+    if (currow == newrow)
+        newdirection = newcol < curcol ? "<" : ">";
+    else
+        newdirection = newrow < currow ? "^" : "v";
+    if (newdirection == direction)
+        newcostdelta = 1;
+    else
+        newcostdelta = 1001;
+    return (newcostdelta, newdirection);
 }
 
 string pathToString(List<(int,int)> path)
