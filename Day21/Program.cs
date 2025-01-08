@@ -302,7 +302,7 @@ List<string> NumericToKeypad2(string instructions)
     {
 
         // numtokeyTranslations does all the work here.
-        instructions = $"A{instructions}";
+        //instructions = $"A{instructions}";
 
         if (memoNumericToKeypad.ContainsKey(instructions))
             return memoNumericToKeypad[instructions];
@@ -329,11 +329,11 @@ List<string> NumericToKeypad2(string instructions)
     else
     {
         var splits = instructions.Split('A');
-        splits[0] = $"A{splits[0]}";
+        splits[0] = $"{splits[0]}";
         HashSet<string> sofar = new HashSet<string>() { "" };
         for (int i = 0; i < splits.Length; i++)
         {
-            splits[i].Append('A');
+            splits[i] = $"{splits[i]}A";
             var t = NumericToKeypad2(splits[i]);
             HashSet<string> newsofar = new();
             if (sofar.Count == 0)
@@ -406,12 +406,13 @@ void Part2Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<
         }
 
         // prune for shortest?
-        int sht = int.MaxValue;
-        foreach (var t in newbunch)
-        {
-            if (t.Length < sht) sht = t.Length;
-        }
-        subMalarky = new HashSet<string>() { newbunch.Where(x => x.Length == sht).First() };
+        //int sht = int.MaxValue;
+        //foreach (var t in newbunch)
+        //{
+        //    if (t.Length < sht) sht = t.Length;
+        //}
+        //subMalarky = new HashSet<string>() { newbunch.Where(x => x.Length == sht).First() };
+        subMalarky = newbunch;
     }
 
     var possiblePaths = subMalarky;
@@ -426,6 +427,7 @@ void Part2Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<
         }
     }
 }
+
 void Part1Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<string, List<string>> numtokeyTranslations, ref int pathlen, ref string chosen, string prefix)
 {
     List<string> possiblePaths = NumericToKeypad(prefix);
