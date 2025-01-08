@@ -1,4 +1,5 @@
 ﻿
+using Day20;
 using System.Security.Cryptography;
 using Utilities;
 
@@ -6,74 +7,80 @@ using Utilities;
 Console.WriteLine("Hello, World!");
 
 var lines = File.ReadAllLines(args[0]);
-int rows = lines.Length;
-int cols = lines[0].Length;
+//Part1(lines);
+Part2.DoPart2(lines);
 
-int startrow = 0;
-int startcol = 0;
-int endrow = 0;
-int endcol = 0;
-
-HashSet<(int, int)> nodes = new();
-for (int i = 0; i < rows; i++)
+void Part1(string[] lines)
 {
-    for (int j = 0; j < cols; j++)
+    int rows = lines.Length;
+    int cols = lines[0].Length;
+
+    int startrow = 0;
+    int startcol = 0;
+    int endrow = 0;
+    int endcol = 0;
+
+    HashSet<(int, int)> nodes = new();
+    for (int i = 0; i < rows; i++)
     {
-        if (lines[i][j] == '.')
+        for (int j = 0; j < cols; j++)
         {
-            nodes.Add((i, j));
-        }
-        if (lines[i][j] == 'S')
-        {
-            nodes.Add((i, j));
-            startrow = i;
-            startcol = j;
-        }
-        if (lines[i][j] == 'E')
-        {
-            nodes.Add((i, j));
-            endrow = i;
-            endcol = j;
+            if (lines[i][j] == '.')
+            {
+                nodes.Add((i, j));
+            }
+            if (lines[i][j] == 'S')
+            {
+                nodes.Add((i, j));
+                startrow = i;
+                startcol = j;
+            }
+            if (lines[i][j] == 'E')
+            {
+                nodes.Add((i, j));
+                endrow = i;
+                endcol = j;
+            }
         }
     }
-}
 
-Dictionary<(int, int), HashSet<(int, int)>> edges = new();
-BuildEdges(nodes, edges);
+    Dictionary<(int, int), HashSet<(int, int)>> edges = new();
+    BuildEdges(nodes, edges);
 
-(int initialSP, List<(int, int)> actualPath) = ShortestPath(nodes, edges, startrow, startcol, endrow, endcol);
-Console.WriteLine($"Shortest path is {initialSP} from {nodes.Count} nodes");
+    (int initialSP, List<(int, int)> actualPath) = ShortestPath(nodes, edges, startrow, startcol, endrow, endcol);
+    Console.WriteLine($"Shortest path is {initialSP} from {nodes.Count} nodes");
 
-Dictionary<int, int> savingCounts = new();
-HashSet<(int, int, int, int)> uniqueCheats = new();
+    Dictionary<int, int> savingCounts = new();
+    HashSet<(int, int, int, int)> uniqueCheats = new();
 
-for (int i = 0; i < rows; i++)
-{
-    for (int j = 0; j < cols; j++)
+    for (int i = 0; i < rows; i++)
     {
-        //if (i == startrow && j == startcol) continue;
-        //if (i == endrow && j == endcol) continue;
+        for (int j = 0; j < cols; j++)
+        {
+            //if (i == startrow && j == startcol) continue;
+            //if (i == endrow && j == endcol) continue;
 
-        // BEWARE DUPLICATE CHEATS.
-        var r1path = CheckCheat2(i, j, i + 1, j, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        var r2path = CheckCheat2(i, j, i - 1, j, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        var c1path = CheckCheat2(i, j, i, j + 1, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        var c2path = CheckCheat2(i, j, i, j - 1, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
-        CheckNewPath(initialSP, savingCounts, r1path, i, j, i + 1, j, uniqueCheats);
-        CheckNewPath(initialSP, savingCounts, r2path, i, j, i - 1, j, uniqueCheats);
-        CheckNewPath(initialSP, savingCounts, c1path, i, j, i, j + 1, uniqueCheats);
-        CheckNewPath(initialSP, savingCounts, c2path, i, j, i, j - 1, uniqueCheats);
+            // BEWARE DUPLICATE CHEATS.
+            var r1path = CheckCheat2(i, j, i + 1, j, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
+            var r2path = CheckCheat2(i, j, i - 1, j, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
+            var c1path = CheckCheat2(i, j, i, j + 1, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
+            var c2path = CheckCheat2(i, j, i, j - 1, rows, cols, nodes, edges, lines, startrow, endrow, startcol, endcol);
+            CheckNewPath(initialSP, savingCounts, r1path, i, j, i + 1, j, uniqueCheats);
+            CheckNewPath(initialSP, savingCounts, r2path, i, j, i - 1, j, uniqueCheats);
+            CheckNewPath(initialSP, savingCounts, c1path, i, j, i, j + 1, uniqueCheats);
+            CheckNewPath(initialSP, savingCounts, c2path, i, j, i, j - 1, uniqueCheats);
+        }
     }
-}
 
-int result = 0;
-foreach ((int k1, int v1) in savingCounts)
-{
-    Console.WriteLine($"There are {v1} cheats savings of {k1} picoseconds");
-    if (k1 >= 100) result += v1;
+    int result = 0;
+    foreach ((int k1, int v1) in savingCounts)
+    {
+        Console.WriteLine($"There are {v1} cheats savings of {k1} picoseconds");
+        if (k1 >= 100) result += v1;
+    }
+    Console.WriteLine($"{uniqueCheats.Count} unique cheats.");
+    Console.WriteLine($"{result} cheats save at least 100 picoseconds");
 }
-Console.WriteLine($"{uniqueCheats.Count} unique cheats.");
-Console.WriteLine($"{result} cheats save at least 100 picoseconds");
 
 //
 // This is a simpler version that simple removes a single # at a time, effectively.
