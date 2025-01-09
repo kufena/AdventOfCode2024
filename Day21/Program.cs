@@ -187,25 +187,56 @@ foreach (var line in lines)
     Console.WriteLine(withA);
     memoNumericToKeypad = new();
 
-    for (int k = 0; k < withA.Length-1; k++)
+    List<string> results = new() { "" };
+    for (int k = 0; k < withA.Length - 1; k++)
     {
-        // Do each digit at a time. They all end on A, so
-        // the keypad steps will all end in the same place.
         string nummv = withA.Substring(k, 2);
         var numpaths = numkeypadMoves[nummv];
-        Console.WriteLine($"{nummv} gives {numpaths.Count} paths");
-        foreach (var nmp in numpaths) Console.Write($"{nmp} ");
-        Console.WriteLine("");
+        List<string> newresults = new();
+        foreach (var np in numpaths)
+        {
+            foreach (var rp in results)
+            {
+                newresults.Add($"{rp}{np}");
+            }
+        }
+        results = newresults;
+    }
+
+    int minlen = int.MaxValue;
+    string finalresult = "";
+    foreach (var pref in results)
+    {
         int pathlen = int.MaxValue;
         string chosen = "";
-        foreach (var prefix in numpaths)
+        Part2Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, pref);
+        Console.WriteLine($"{pref} -> {chosen} {chosen.Length}");
+        if (chosen.Length < minlen)
         {
-            //Part1Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, prefix);
-            Part2Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, prefix);
+            minlen = chosen.Length;
+            finalresult = chosen.Substring(1); // drop the starting A.
         }
-        resultbuilder.Append(chosen);
     }
-    string finalresult = resultbuilder.ToString();
+
+    //for (int k = 0; k < withA.Length-1; k++)
+    //{
+    //    // Do each digit at a time. They all end on A, so
+    //    // the keypad steps will all end in the same place.
+    //    string nummv = withA.Substring(k, 2);
+    //    var numpaths = numkeypadMoves[nummv];
+    //    Console.WriteLine($"{nummv} gives {numpaths.Count} paths");
+    //    foreach (var nmp in numpaths) Console.Write($"{nmp} ");
+    //    Console.WriteLine("");
+    //    int pathlen = int.MaxValue;
+    //    string chosen = "";
+    //    foreach (var prefix in numpaths)
+    //    {
+    //        Part1Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, prefix);
+    //        //Part2Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, prefix);
+    //    }
+    //    resultbuilder.Append(chosen);
+    //}
+//    string finalresult = resultbuilder.ToString();
     Console.WriteLine($"{finalresult}  {finalresult.Length}");
     int q = int.Parse(line.Substring(0,line.Length - 1));
     Console.WriteLine($"{line.Substring(0, line.Length - 1)} {q * finalresult.Length}");
@@ -293,8 +324,8 @@ List<string> NumericToKeypad2(string instructions)
         if (instructions[q] == 'A')
         {
             Acount++;
-            if (Acount > 1) // ie 2 or more.
-                break;
+            //if (Acount > 1) // ie 2 or more.
+            //    break;
         }
     }
 
@@ -302,7 +333,8 @@ List<string> NumericToKeypad2(string instructions)
     {
 
         // numtokeyTranslations does all the work here.
-        //instructions = $"A{instructions}";
+//        instructions = instructions.StartsWith("A") ? instructions : $"A{instructions}";
+        instructions = $"A{instructions}";
 
         if (memoNumericToKeypad.ContainsKey(instructions))
             return memoNumericToKeypad[instructions];
@@ -322,18 +354,44 @@ List<string> NumericToKeypad2(string instructions)
             }
             sofar = sofarsofar;
         }
+        if (sofar.Count > 1)
+        {
+            int largest = int.MaxValue;
+            foreach (var sf in sofar)
+            {
+                if (sf.Length < largest) largest = sf.Length;
+            }
+            sofar = sofar.Where(x => x.Length == largest).ToList();
+            //sofar = new List<string>() { sofar.First() };
+        }
 
         memoNumericToKeypad.Add(instructions, sofar);
         return sofar;
     }
     else
     {
-        var splits = instructions.Split('A');
-        splits[0] = $"{splits[0]}";
+        // we assume an A at the end.
+        if (!instructions.EndsWith("A")) throw new Exception($"No A at the end of instruction block {instructions}");
+
+        string[] splits = new string[Acount];
+        int count = 0;
+        int pos = 0;
+        int start = 0;
+        while (pos < instructions.Length)
+        {
+            if (instructions[pos] == 'A')
+            {
+                splits[count] = instructions.Substring(start, (pos - start) + 1);
+                count++;
+                start = pos + 1;
+            }
+            pos++;
+        }
+
         HashSet<string> sofar = new HashSet<string>() { "" };
         for (int i = 0; i < splits.Length; i++)
         {
-            splits[i] = $"{splits[i]}A";
+            //splits[i] = $"{splits[i]}A";
             var t = NumericToKeypad2(splits[i]);
             HashSet<string> newsofar = new();
             if (sofar.Count == 0)
@@ -346,9 +404,9 @@ List<string> NumericToKeypad2(string instructions)
                     if (s.Length < len) len = s.Length;
                     newsofar.Add(s);
                 }
-            sofar = new HashSet<string>() { newsofar.Where(x => x.Length == len).First() };
+            sofar = newsofar; // new HashSet<string>() { newsofar.Where(x => x.Length == len).First() };
         }
-        memoNumericToKeypad.Add(instructions, sofar.ToList());
+        //memoNumericToKeypad.Add(instructions, sofar.ToList());
         return sofar.ToList();
     }
 }
@@ -395,13 +453,14 @@ string KeypadToKeypad(string instructions)
 // Part2 Malarky is 25 times Part1 Malarky really.
 void Part2Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<string, List<string>> numtokeyTranslations, ref int pathlen, ref string chosen, string prefix)
 {
+    int iters = 3; // two should give part1 answer, we need 25 iterations though.
     HashSet<string> subMalarky = new HashSet<string>() { prefix };
-    for (int i = 0; i < 25; i++)
+    for (int i = 0; i < iters; i++)
     {
         HashSet<string> newbunch = new();
         foreach (var pre in subMalarky)
         {
-            List<string> thislot = NumericToKeypad2(pre);
+            List<string> thislot = NumericToKeypad2($"A{pre}");
             foreach (var t in thislot) newbunch.Add(t);
         }
 
