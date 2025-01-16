@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using System.Diagnostics.CodeAnalysis;
 using System.Net.NetworkInformation;
 using System.Text;
 
@@ -176,6 +177,22 @@ HashSet<string> EnumerateRoutes(int row, int col, int destrow, int destcol, int 
     return routes;
 }
 
+//
+//
+//
+
+Dictionary<(string, int), string> TwoByTwoMemo = new();
+HashSet<int> depthsVisited = new();
+
+// 22665
+var twobtwo = TwoByTwo("A<", 3, true);
+Console.WriteLine($"well? {twobtwo.Length}");
+Console.WriteLine("How do you like them apples?");
+
+//
+//
+//
+
 long result = 0;
 foreach (var line in lines)
 {
@@ -209,7 +226,8 @@ foreach (var line in lines)
     {
         int pathlen = int.MaxValue;
         string chosen = "";
-        Part2Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, pref);
+        Part2MalarkyRedone(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, $"A{pref}", 2);
+        //Part2Malarky(directionalPositions, numtokeyTranslations, ref pathlen, ref chosen, pref);
         Console.WriteLine($"{pref} -> {chosen} {chosen.Length}");
         if (chosen.Length < minlen)
         {
@@ -451,9 +469,17 @@ string KeypadToKeypad(string instructions)
 }
 
 // Part2 Malarky is 25 times Part1 Malarky really.
+void Part2MalarkyRedone(Dictionary<char, (int, int)> directionalPositions, Dictionary<string, List<string>> numtokeyTranslations, ref int pathlen, ref string chosen, string prefix, int iters)
+{
+    string s = TwoByTwo(prefix, iters, true );
+
+    chosen = s;
+    pathlen = s.Length;
+}
+
 void Part2Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<string, List<string>> numtokeyTranslations, ref int pathlen, ref string chosen, string prefix)
 {
-    int iters = 3; // two should give part1 answer, we need 25 iterations though.
+    int iters = 25; // two should give part1 answer, we need 25 iterations though.
     HashSet<string> subMalarky = new HashSet<string>() { prefix };
     for (int i = 0; i < iters; i++)
     {
@@ -475,7 +501,7 @@ void Part2Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<
     }
 
     var possiblePaths = subMalarky;
-    
+
     foreach (string path in possiblePaths)
     {
         string finalencoding = KeypadToKeypad(path);
@@ -499,4 +525,54 @@ void Part1Malarky(Dictionary<char, (int, int)> directionalPositions, Dictionary<
             pathlen = finalencoding.Length;
         }
     }
+}
+
+string TwoByTwo(string s, int depth, bool top)
+{
+    if (depth == 0)
+    {
+        return s;
+    }
+
+    if (TwoByTwoMemo.ContainsKey((s,depth)))
+        return TwoByTwoMemo[(s,depth)];
+
+    bool addA = !depthsVisited.Contains(depth);
+    if (addA) depthsVisited.Add(depth);
+
+    //if (!depthsVisited.Contains(depth))
+    //{
+    //    s = $"A{s}";
+    //    depthsVisited.Add(depth);
+    //}
+
+    List<string> results = new List<string>() { "" };
+    for (int i = 1; i < s.Length; i++)
+    {
+        string substring = s.Substring(i - 1, 2);
+        var todo = numtokeyTranslations[substring];
+        List<string> newresults = new();
+        foreach (var doer in todo)
+        {
+            string cand = doer;
+            if (substring.StartsWith("A") && !doer.StartsWith("A")) cand = $"A{doer}";
+            var subs = TwoByTwo(cand, depth - 1, true);
+            newresults.Add(subs);
+        }
+
+        List<string> finals = new();
+        foreach (var nrs in newresults)
+        {
+            foreach (var srn in results)
+            {
+                finals.Add($"{srn}{nrs}");
+            }
+        }
+        results = finals;
+    }
+
+    var val = results.Order().First();
+    TwoByTwoMemo.Add((s, depth), val);
+    return val;
+    //return results;
 }
